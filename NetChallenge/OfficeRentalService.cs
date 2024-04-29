@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
-using System.Xml.Linq;
 using NetChallenge.Abstractions;
 using NetChallenge.Domain;
 using NetChallenge.Dto.Input;
@@ -43,12 +40,13 @@ namespace NetChallenge
 
         public void AddOffice(AddOfficeRequest request)
         {
-            var location = _locationRepository.GetByName(request.LocationName) ?? throw new ArgumentException("El local especificado no existe.");
+            var location = _locationRepository.AsEnumerable().Where(l=>l.Name == request.LocationName).FirstOrDefault() ?? throw new ArgumentException("El local especificado no existe.");
             var office = new Office
             {
-                LocationId = location.Id,
+                LocationName = location.Name,
                 Name = !string.IsNullOrWhiteSpace(request.Name) ? request.Name : throw new Exception("El nombre de la oficina no puede estar vacío."),
                 Capacity = request.MaxCapacity > 0 ? request.MaxCapacity : throw new Exception("La capacidad de la oficina debe ser mayor que cero."),
+                OfficeResource = request.AvailableResources.ToArray(),
             };
             _officeRepository.Add(office);
         }
@@ -56,20 +54,6 @@ namespace NetChallenge
         public void BookOffice(BookOfficeRequest request)
         {
             {
-                // Obtener la locación por nombre
-                var location = _locationRepository.AsEnumerable().FirstOrDefault(l => l.Name == request.LocationName);
-                if (location == null)
-                {
-                    throw new ArgumentException("La locación especificada no existe.", nameof(request.LocationName));
-                }
-
-                // Obtener la oficina por nombre y locación
-                var office = _officeRepository.GetAllByLocation(location.Id).FirstOrDefault(o => o.Name == request.OfficeName);
-                if (office == null)
-                {
-                    throw new ArgumentException("La oficina especificada no existe en la locación proporcionada.", nameof(request.OfficeName));
-                }
-
                 // Validar que la fecha de inicio sea válida
                 if (request.DateTime < DateTime.Now)
                 {
@@ -83,10 +67,10 @@ namespace NetChallenge
                 }
 
                 // Verificar disponibilidad de la oficina para el horario especificado
-                var bookings = _bookingRepository.GetByOffice(office.Id);
+                var bookings = GetBookings(request.LocationName,request.OfficeName);
                 var endTime = request.DateTime.Add(request.Duration);
                 var isAvailable = !bookings.Any(b =>
-                    request.DateTime < b.StartTime.AddHours(b.Duration) && endTime > b.StartTime);
+                    request.DateTime < b.DateTime.Add(b.Duration) && endTime > b.DateTime);
 
                 if (!isAvailable)
                 {
@@ -96,7 +80,8 @@ namespace NetChallenge
                 // Crear una nueva instancia de Booking
                 var booking = new Booking
                 {
-                    OfficeId = office.Id,
+                    OfficeName = request.OfficeName,
+                    LocationName = request.LocationName,
                     StartTime = request.DateTime,
                     Duration = (int)request.Duration.TotalHours,
                     User = request.UserName
@@ -109,7 +94,21 @@ namespace NetChallenge
 
         public IEnumerable<BookingDto> GetBookings(string locationName, string officeName)
         {
-            throw new NotImplementedException();
+            var result = from booking in _bookingRepository.AsEnumerable()
+                         join office in _officeRepository.AsEnumerable() on booking.OfficeName equals office.Name
+                         join location in _locationRepository.AsEnumerable() on office.LocationName equals location.Name
+                         where location.Name.Equals(locationName, StringComparison.OrdinalIgnoreCase)
+                            && office.Name.Equals(officeName, StringComparison.OrdinalIgnoreCase)
+                         select new BookingDto
+                         {
+                             LocationName = location.Name,
+                             OfficeName = office.Name,
+                             DateTime = booking.StartTime,
+                             Duration = TimeSpan.FromHours(booking.Duration),
+                             UserName = booking.User
+                         };
+
+            return result;
         }
 
         public IEnumerable<LocationDto> GetLocations()
@@ -119,12 +118,44 @@ namespace NetChallenge
 
         public IEnumerable<OfficeDto> GetOffices(string locationName)
         {
-            throw new NotImplementedException();
+            var officesDto = from office in _officeRepository.AsEnumerable()
+                             join location in _locationRepository.AsEnumerable() 
+                             on office.LocationName equals location.Name
+                             where location.Name.Equals(locationName, StringComparison.OrdinalIgnoreCase)
+                             select new OfficeDto
+                             {
+                                 LocationName = location.Name,
+                                 Name = office.Name,
+                                 MaxCapacity = office.Capacity,
+                                 AvailableResources = new string[] { } 
+                             };
+
+            return officesDto;
         }
 
         public IEnumerable<OfficeDto> GetOfficeSuggestions(SuggestionsRequest request)
         {
-            throw new NotImplementedException();
+            var suggestions = _officeRepository.AsEnumerable()
+            .Where(office => office.Capacity >= request.CapacityNeeded &&
+                             request.ResourcesNeeded.All(resource => office.OfficeResource.Contains(resource)))
+            .Select(office => new
+            {
+                Office = office,
+                Location = _locationRepository.AsEnumerable().FirstOrDefault(loc => loc.Name == office.LocationName)
+            })
+            .Where(officeLocation => officeLocation.Location != null)
+            .Select(officeLocation => new OfficeDto
+            {
+                LocationName = officeLocation.Location.Name,
+                Name = officeLocation.Office.Name,
+                MaxCapacity = officeLocation.Office.Capacity,
+                AvailableResources = officeLocation.Office.OfficeResource
+            })
+            .OrderByDescending(officeDto => officeDto.LocationName.Equals(request.PreferedNeigborHood, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(officeDto => officeDto.MaxCapacity)
+            .ThenByDescending(officeDto => officeDto.AvailableResources.Except(request.ResourcesNeeded).Count());
+
+            return suggestions;
         }
     }
 }

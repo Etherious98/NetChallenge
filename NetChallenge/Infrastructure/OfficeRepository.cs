@@ -19,18 +19,11 @@ namespace NetChallenge.Infrastructure
 
         public void Add(Office item)
         {
-            item.Id = _offices.Count + 1;
+            if(_offices.Contains(item)) 
+            {
+                throw new System.Exception("El objeto que intenta insertar ya existe!");
+            }
             _offices.Add(item);
-        }
-
-        public Office GetById(int id)
-        {
-            return _offices.FirstOrDefault(o => o.Id == id);
-        }
-
-        public IEnumerable<Office> GetAllByLocation(int locationId)
-        {
-            return _offices.Where(o => o.LocationId == locationId).ToList();
         }
     }
 }

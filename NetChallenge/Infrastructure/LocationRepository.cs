@@ -21,18 +21,11 @@ namespace NetChallenge.Infrastructure
 
         public void Add(Location item)
         {
-            item.Id = _locations.Count + 1;
+            if(_locations.Contains(item))
+            {
+                throw new System.Exception("El objeto que intenta insertar ya existe!");
+            }
             _locations.Add(item);
-        }
-
-        public Location GetById(int id)
-        {
-            return _locations.FirstOrDefault(l => l.Id == id);
-        }
-
-        public Location GetByName(string name)
-        {
-            return _locations.Where(x=>x.Name == name).FirstOrDefault();
         }
     }
 }

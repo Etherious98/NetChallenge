@@ -21,13 +21,11 @@ namespace NetChallenge.Infrastructure
 
         public void Add(Booking item)
         {
-            item.Id = _bookings.Count + 1;
+            if (_bookings.Contains(item))
+            {
+                throw new System.Exception("El objeto que intenta insertar ya existe!");
+            };
             _bookings.Add(item);
-        }
-
-        public IEnumerable<Booking> GetByOffice(int officeId)
-        {
-            return _bookings.Where(b => b.OfficeId == officeId).ToList();
         }
     }
 }

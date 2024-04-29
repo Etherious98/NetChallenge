@@ -4,8 +4,8 @@ namespace NetChallenge.Domain
 {
     public class Booking
     {
-        public int Id { get; set; }
-        public int OfficeId { get; set; }
+        public string LocationName { get; set; }
+        public string OfficeName { get; set; }
         public DateTime StartTime { get; set; }
         public int Duration { get; set; }
         public string User { get; set; }
