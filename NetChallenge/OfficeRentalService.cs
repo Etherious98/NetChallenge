@@ -163,7 +163,7 @@ namespace NetChallenge
                 MaxCapacity = officeLocation.Office.Capacity,
                 AvailableResources = officeLocation.Office.OfficeResource
             })
-            .OrderBy(officeDto => officeDto.LocationName.Equals(request.PreferedNeigborHood, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(officeDto => officeDto.LocationName)
             .ThenBy(officeDto => officeDto.MaxCapacity)
             .ThenBy(officeDto => officeDto.AvailableResources.Except(request.ResourcesNeeded).Count());
 
