@@ -21,10 +21,6 @@ namespace NetChallenge.Infrastructure
 
         public void Add(Booking item)
         {
-            if (_bookings.Contains(item))
-            {
-                throw new System.Exception("El objeto que intenta insertar ya existe!");
-            };
             _bookings.Add(item);
         }
     }
