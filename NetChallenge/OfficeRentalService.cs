@@ -25,6 +25,7 @@ namespace NetChallenge
         {
             try
             {
+                // Validar que no exista la locacion
                 if (_locationRepository.LocationAlreadyExists(request.Name))
                 {
                     throw new InvalidOperationException("El objeto que intenta insertar ya existe!");
@@ -46,6 +47,7 @@ namespace NetChallenge
         {
             try
             {
+                // Validar que exista la locación
                 var location = _locationRepository.AsEnumerable().Where(l => l.Name == request.LocationName).FirstOrDefault() ?? throw new ArgumentException("El local especificado no existe.");
                 var office = new Office
                 {
@@ -54,6 +56,8 @@ namespace NetChallenge
                     Capacity = request.MaxCapacity > 0 ? request.MaxCapacity : throw new ArgumentException("La capacidad de la oficina debe ser mayor que cero."),
                     OfficeResource = request.AvailableResources.ToArray()
                 };
+
+                //Validar que no exista la oficina
                 if (_officeRepository.OfficeAlreadyExist(office)) throw new InvalidOperationException("El objeto que intenta insertar ya existe!");
                 _officeRepository.Add(office);
             }
@@ -97,7 +101,6 @@ namespace NetChallenge
                         throw new InvalidOperationException("La oficina ya está reservada para el horario especificado.");
                     }
 
-                    // Crear una nueva instancia de Booking
                     var booking = new Booking
                     {
                         OfficeName = request.OfficeName,
@@ -107,7 +110,6 @@ namespace NetChallenge
                         User = !string.IsNullOrWhiteSpace(request.UserName) ? request.UserName : throw new ArgumentException("El nombre de usuario no puede estar vacío."),
                     };
 
-                    // Agregar la nueva reserva al repositorio y devolverla
                     _bookingRepository.Add(booking);
                 }
                 catch(ArgumentException)
