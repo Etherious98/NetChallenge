@@ -16,16 +16,17 @@ namespace NetChallenge.Infrastructure
 
         public IEnumerable<Location> AsEnumerable()
         {
-            return _locations.ToList();
+            return _locations;
         }
 
         public void Add(Location item)
         {
-            if(_locations.Contains(item))
-            {
-                throw new System.Exception("El objeto que intenta insertar ya existe!");
-            }
             _locations.Add(item);
+        }
+
+        public bool LocationAlreadyExists(string name)
+        {
+            return _locations.Exists(x=>x.Name == name);
         }
     }
 }

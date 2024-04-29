@@ -9,7 +9,7 @@ namespace NetChallenge.Test.Utils
         {
             LocationName = AddOfficeRequestMother.Default.LocationName,
             OfficeName = AddOfficeRequestMother.Default.Name,
-            DateTime = new DateTime(2022, 10, 10, 10, 0, 0, DateTimeKind.Utc),
+            DateTime = new DateTime(2024, 10, 10, 10, 0, 0, DateTimeKind.Utc),
             Duration = TimeSpan.FromHours(1),
             UserName = "test_user"
         };

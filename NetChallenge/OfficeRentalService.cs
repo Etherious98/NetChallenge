@@ -25,6 +25,10 @@ namespace NetChallenge
         {
             try
             {
+                if (_locationRepository.LocationAlreadyExists(request.Name))
+                {
+                    throw new InvalidOperationException("El objeto que intenta insertar ya existe!");
+                }
                 var location = new Location
                 {
                     Name = !string.IsNullOrWhiteSpace(request.Name) ? request.Name : throw new Exception("El nombre del local no puede estar vacío."),
@@ -32,9 +36,9 @@ namespace NetChallenge
                 };
                 _locationRepository.Add(location);
             }
-            catch(Exception ex)
+            catch
             {
-                throw ex;
+                throw;
             }
         }
 
@@ -43,17 +47,20 @@ namespace NetChallenge
             var location = _locationRepository.AsEnumerable().Where(l=>l.Name == request.LocationName).FirstOrDefault() ?? throw new ArgumentException("El local especificado no existe.");
             var office = new Office
             {
-                LocationName = location.Name,
+                LocationName = request.LocationName,
                 Name = !string.IsNullOrWhiteSpace(request.Name) ? request.Name : throw new Exception("El nombre de la oficina no puede estar vacío."),
                 Capacity = request.MaxCapacity > 0 ? request.MaxCapacity : throw new Exception("La capacidad de la oficina debe ser mayor que cero."),
-                OfficeResource = request.AvailableResources.ToArray(),
+                OfficeResource = request.AvailableResources.ToArray()
             };
+            if (_officeRepository.OfficeAlreadyExist(office)) throw new Exception("El objeto que intenta insertar ya existe!");
             _officeRepository.Add(office);
         }
 
         public void BookOffice(BookOfficeRequest request)
         {
             {
+                if (!_officeRepository.OfficeAlreadyExist(new Office { LocationName = request.LocationName, Name = request.OfficeName })) throw new Exception("La oficina especificada no existe");
+
                 // Validar que la fecha de inicio sea válida
                 if (request.DateTime < DateTime.Now)
                 {
@@ -84,7 +91,7 @@ namespace NetChallenge
                     LocationName = request.LocationName,
                     StartTime = request.DateTime,
                     Duration = (int)request.Duration.TotalHours,
-                    User = request.UserName
+                    User = !string.IsNullOrWhiteSpace(request.UserName) ? request.UserName : throw new Exception("El nombre de usuario no puede estar vacío."),
                 };
 
                 // Agregar la nueva reserva al repositorio y devolverla
@@ -113,7 +120,12 @@ namespace NetChallenge
 
         public IEnumerable<LocationDto> GetLocations()
         {
-            return (IEnumerable<LocationDto>)_locationRepository.AsEnumerable();
+            return from location in _locationRepository.AsEnumerable() 
+                   select new LocationDto
+                   {
+                       Name = location.Name,
+                       Neighborhood = location.Neighborhood,
+                   };
         }
 
         public IEnumerable<OfficeDto> GetOffices(string locationName)
@@ -127,7 +139,7 @@ namespace NetChallenge
                                  LocationName = location.Name,
                                  Name = office.Name,
                                  MaxCapacity = office.Capacity,
-                                 AvailableResources = new string[] { } 
+                                 AvailableResources = office.OfficeResource 
                              };
 
             return officesDto;
@@ -151,11 +163,11 @@ namespace NetChallenge
                 MaxCapacity = officeLocation.Office.Capacity,
                 AvailableResources = officeLocation.Office.OfficeResource
             })
-            .OrderByDescending(officeDto => officeDto.LocationName.Equals(request.PreferedNeigborHood, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(officeDto => officeDto.LocationName.Equals(request.PreferedNeigborHood, StringComparison.OrdinalIgnoreCase))
             .ThenBy(officeDto => officeDto.MaxCapacity)
-            .ThenByDescending(officeDto => officeDto.AvailableResources.Except(request.ResourcesNeeded).Count());
+            .ThenBy(officeDto => officeDto.AvailableResources.Except(request.ResourcesNeeded).Count());
 
             return suggestions;
-        }
+        }        
     }
 }
